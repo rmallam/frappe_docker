@@ -135,6 +135,9 @@ COPY --from=builder --chown=1001:0 /home/frappe/frappe-bench /home/frappe/frappe
 
 WORKDIR /home/frappe/frappe-bench
 
+# Switch to root to fix permissions for OpenShift
+USER root
+
 # OCP Compliance: Ensure group permissions for runtime
 RUN chmod -R g=u /home/frappe/frappe-bench && \
     chmod g=u /etc/passwd
@@ -144,6 +147,9 @@ RUN chmod +x /usr/local/bin/entrypoint.sh
 
 # Use entrypoint to handle UID mapping
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
+
+# Switch back to non-root user
+USER 1001
 
 VOLUME [ \
   "/home/frappe/frappe-bench/sites", \
