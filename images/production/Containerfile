@@ -136,7 +136,14 @@ COPY --from=builder --chown=1001:0 /home/frappe/frappe-bench /home/frappe/frappe
 WORKDIR /home/frappe/frappe-bench
 
 # OCP Compliance: Ensure group permissions for runtime
-RUN chmod -R g=u /home/frappe/frappe-bench
+RUN chmod -R g=u /home/frappe/frappe-bench && \
+    chmod g=u /etc/passwd
+
+COPY resources/entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
+
+# Use entrypoint to handle UID mapping
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 
 VOLUME [ \
   "/home/frappe/frappe-bench/sites", \
