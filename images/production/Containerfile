@@ -122,12 +122,15 @@ RUN bench init \
   --no-backups \
   --skip-redis-config-generation \
   --verbose \
-  /home/frappe/frappe-bench && \
-  cd /home/frappe/frappe-bench && \
-  bench get-app --branch=${ERPNEXT_BRANCH} --resolve-deps erpnext ${ERPNEXT_REPO} && \
-  echo "{}" > sites/common_site_config.json && \
-  # BUILD ASSETS IN BUILDER
-  bench build
+  /home/frappe/frappe-bench
+
+WORKDIR /home/frappe/frappe-bench
+
+RUN bench get-app --branch=${ERPNEXT_BRANCH} --resolve-deps erpnext ${ERPNEXT_REPO}
+
+RUN echo "{}" > sites/common_site_config.json
+
+RUN bench build
 
 FROM base AS erpnext
 
