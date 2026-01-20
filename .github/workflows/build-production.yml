@@ -11,7 +11,7 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ghcr.io/rmallam/frappe_ocp
+  IMAGE_NAME: ghcr.io/rmallam/frappe_docker
 
 jobs:
   build-and-push:
