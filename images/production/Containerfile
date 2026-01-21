@@ -71,7 +71,7 @@ RUN if [ "$(uname -m)" = "aarch64" ]; then export ARCH=arm64; fi \
     && chown -R 1001:0 /etc/nginx /var/log/nginx /var/lib/nginx /run \
     && chmod -R g=u /etc/nginx /var/log/nginx /var/lib/nginx /run /home/frappe/.nvm
 
-COPY resources/nginx-template.conf /etc/nginx/conf.d/frappe.conf.template
+COPY resources/nginx-template.conf /templates/nginx/frappe.conf.template
 COPY resources/nginx-entrypoint.sh /usr/local/bin/nginx-entrypoint.sh
 RUN chmod +x /usr/local/bin/nginx-entrypoint.sh
 
