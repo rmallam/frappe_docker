@@ -148,7 +148,9 @@ USER root
 # Pre-create sites and logs directories if they don't exist and ensure they are group-writable
 # This helps with volume permission inheritance on some clusters
 RUN mkdir -p sites sites/assets logs && \
+    cp -R sites/assets /home/frappe/assets_cache && \
     chmod -R g=u /home/frappe/frappe-bench && \
+    chmod -R g=u /home/frappe/assets_cache && \
     chmod g=u /etc/passwd
 
 COPY resources/entrypoint.sh /usr/local/bin/entrypoint.sh
