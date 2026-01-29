@@ -1,0 +1,30 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: manual-init-job
+  namespace: default
+spec:
+  template:
+    spec:
+      containers:
+      - name: bench-init
+        image: ghcr.io/rmallam/frappe_docker:latest@sha256:d6be45f3620a7ab3d55452c370d26280772f6b007236402f1edbc64aa2281f57
+        # Simplified command to test permissions first, then run init (using text from failed job log but simplified)
+        # Note: The original job used an init script argument. I'm reconstructing the command roughly.
+        # Actually, let's just use the command from the containerfile entrypoint + args?
+        # The failed job used: command: ["bash", "-c", "initScript..."]
+        # I'll paste the command I constructed in the previous step.
+        command: ["bash", "-c", "ls -ld /home/frappe/frappe-bench/sites && id && echo 'Running init...' && bench init --frappe-branch=version-15 --frappe-path=https://github.com/frappe/frappe --no-procfile --no-backups --skip-redis-config-generation --verbose /home/frappe/frappe-bench && cd /home/frappe/frappe-bench && bench get-app --branch=version-15 --resolve-deps erpnext https://github.com/frappe/erpnext && echo '{}' > sites/common_site_config.json && bench build"]
+        volumeMounts:
+        - mountPath: /home/frappe/frappe-bench/sites
+          name: sites
+        env:
+        - name: SKIP_BENCH_BUILD
+          value: "0"
+      securityContext:
+        fsGroup: 0
+      restartPolicy: Never
+      volumes:
+      - name: sites
+        persistentVolumeClaim:
+          claimName: my-bench-2-sites
