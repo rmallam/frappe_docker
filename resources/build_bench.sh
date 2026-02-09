@@ -31,8 +31,12 @@ bench init \
     --verbose \
     "$BENCH_DIR"
 
-# 4. Enter bench directory
+# 4. Enter bench directory and FORCE-DISABLE UV
 cd "$BENCH_DIR"
+echo "Disabling uv via bench config..."
+# Many modern bench versions will ignore ENV if config is present
+./env/bin/pip uninstall -y uv || true
+bench config use_uv off || true
 
 # 5. Fetch Apps
 echo "Starting app discovery..."
