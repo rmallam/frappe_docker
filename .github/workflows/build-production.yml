@@ -7,6 +7,7 @@ on:
       - main
     paths:
       - 'images/production/**'
+      - 'resources/**'
       - '.github/workflows/build-production.yml'
 
 env:
