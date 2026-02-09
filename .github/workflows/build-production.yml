@@ -63,5 +63,5 @@ jobs:
           pull: true
           build-args: |
             GITHUB_ORG=
-            GH_ACCESS_TOKEN=${{ secrets.GITHUB_TOKEN }}
+            GH_BUILD_KEY=${{ secrets.GITHUB_TOKEN }}
             APPS=https://github.com/rmallam/frappe-hello-world.git https://github.com/frappe/erpnext.git
