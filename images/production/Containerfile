@@ -84,12 +84,12 @@ ARG GH_ACCESS_TOKEN=""
 
 WORKDIR /home/frappe
 
-# Consolidate Build Process: Init + Fetch + Build
-RUN git config --global user.email "frappe@example.com" && \
+# Consolidate Build Process with Verbose Debugging
+RUN set -ex && \
+    git config --global user.email "frappe@example.com" && \
     git config --global user.name "frappe" && \
     git config --global --add safe.directory '*' && \
-    # 1. Initialize Bench
-    echo "Initializing bench..." && \
+    # 1. Initialize Bench (using absolute path)
     bench init \
       --frappe-branch=${FRAPPE_BRANCH} \
       --frappe-path=${FRAPPE_PATH} \
@@ -97,22 +97,20 @@ RUN git config --global user.email "frappe@example.com" && \
       --no-backups \
       --skip-redis-config-generation \
       --verbose \
-      frappe-bench && \
-    cd frappe-bench && \
+      /home/frappe/frappe-bench && \
+    cd /home/frappe/frappe-bench && \
     # 2. Fetch Apps
     export GITHUB_TOKEN=${GH_ACCESS_TOKEN} && \
-    echo "Fetching apps..." && \
     APPS_LIST=$(get_apps --org "${GITHUB_ORG}" --apps "${APPS} ${ERPNEXT_REPO}") && \
-    echo "Apps to install: ${APPS_LIST}" && \
+    echo "Found apps to install: ${APPS_LIST}" && \
     for app in ${APPS_LIST}; do \
-        echo "Installing app: ${app}" && \
+        echo "Installing app from: ${app}" && \
         bench get-app --resolve-deps "${app}"; \
     done && \
-    # 3. Finalize
+    # 3. Finalize Assets
     echo "{}" > sites/common_site_config.json && \
     bench build && \
-    # 4. Cleanup
-    echo "Cleaning up..." && \
+    # 4. Cleanup to minimize image size
     rm -rf apps/*/.git && \
     find . -name "__pycache__" -type d -exec rm -rf {} + && \
     find . -name "*.pyc" -delete
