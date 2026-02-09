@@ -4,6 +4,11 @@ set -ex
 # This script initializes the Frappe Bench and installs apps.
 # It is designed to run inside the Docker builder container.
 
+# CRITICAL: Disable 'uv' for Docker builds. 'uv' often crashes with 
+# Illegal Instruction (exit 167) during emulated ARM64 builds in QEMU.
+export BENCH_USE_UV=0
+export INSTALL_USE_UV=0
+
 BENCH_DIR="/home/frappe/frappe-bench"
 
 # 1. Setup Git
