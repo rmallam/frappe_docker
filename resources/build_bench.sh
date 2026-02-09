@@ -54,8 +54,9 @@ if [ -n "$APPS_LIST" ]; then
     echo "Identified unique apps to install: $APPS_LIST"
     for app in $APPS_LIST; do
         echo "Installing app: $app"
-        # Always use --resolve-deps to ensure dependencies are pulled
-        bench get-app --resolve-deps "$app"
+        # Force the branch to match FRAPPE_BRANCH to ensure compatibility
+        # unless a branch is already specified (though URLs here usually don't have them)
+        bench get-app --resolve-deps --branch "${FRAPPE_BRANCH:-version-15}" "$app"
     done
 else
     echo "No custom apps to install."
