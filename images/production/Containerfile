@@ -80,9 +80,9 @@ ARG ERPNEXT_REPO=https://github.com/frappe/erpnext
 ARG ERPNEXT_BRANCH=version-15
 ARG APPS=""
 ARG GITHUB_ORG=""
-ARG GITHUB_TOKEN=""
+ARG GH_ACCESS_TOKEN=""
 
-WORKDIR /home/frappe/frappe-bench
+WORKDIR /home/frappe
 
 RUN git config --global user.email "frappe@example.com" && \
     git config --global user.name "frappe" && \
@@ -95,10 +95,12 @@ RUN bench init \
   --no-backups \
   --skip-redis-config-generation \
   --verbose \
-  /home/frappe/frappe-bench
+  frappe-bench
+
+WORKDIR /home/frappe/frappe-bench
 
 # Dynamically fetch ERPNext and any other requested apps
-RUN export GITHUB_TOKEN=${GITHUB_TOKEN} && \
+RUN export GITHUB_TOKEN=${GH_ACCESS_TOKEN} && \
     APPS_LIST=$(get_apps --org "${GITHUB_ORG}" --apps "${APPS} ${ERPNEXT_REPO}") && \
     for app in ${APPS_LIST}; do \
         bench get-app --resolve-deps "${app}"; \
