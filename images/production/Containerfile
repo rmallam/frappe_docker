@@ -2,13 +2,13 @@ ARG PYTHON_VERSION=3.11.6
 ARG DEBIAN_BASE=bookworm
 ARG TARGETARCH
 
+# --- Stage 1: Runtime Base (Minimal) ---
+FROM python:${PYTHON_VERSION}-slim-${DEBIAN_BASE} AS base
+
 # Disable 'uv' for Docker builds globally. It often crashes with 
 # Illegal Instruction (exit 167) during emulated ARM64 builds in QEMU.
 ENV BENCH_USE_UV=0
 ENV INSTALL_USE_UV=0
-
-# --- Stage 1: Runtime Base (Minimal) ---
-FROM python:${PYTHON_VERSION}-slim-${DEBIAN_BASE} AS base
 
 ARG WKHTMLTOPDF_VERSION=0.12.6.1-3
 ARG WKHTMLTOPDF_DISTRO=bookworm
@@ -34,7 +34,9 @@ RUN useradd -u 1001 -ms /bin/bash -g 0 frappe && \
     rm -rf /var/lib/apt/lists/* && \
     # System path for bench
     pip3 install --no-cache-dir frappe-bench && \
+    # Deleting all traces of uv to force pip fallback
     pip3 uninstall -y uv && \
+    rm -rf /usr/local/bin/uv /usr/bin/uv && \
     # Nginx config for non-root
     rm -fr /etc/nginx/sites-enabled/default && \
     sed -i '/user www-data/d' /etc/nginx/nginx.conf && \
