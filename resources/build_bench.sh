@@ -8,6 +8,13 @@ set -ex
 # Illegal Instruction (exit 167) during emulated ARM64 builds in QEMU.
 export BENCH_USE_UV=0
 export INSTALL_USE_UV=0
+export PYTHON_PATH="./env/bin/python"
+
+# Ensure we are NOT using uv
+if command -v uv >/dev/null 2>&1; then
+    echo "WARNING: uv found in PATH, attempting to hide it..."
+    # We don't want to fail if it's there but ignored, but we want to know
+fi
 
 BENCH_DIR="/home/frappe/frappe-bench"
 
