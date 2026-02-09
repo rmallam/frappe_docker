@@ -50,7 +50,8 @@ RUN apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get install --no-install-recommends -y \
     # Build Tools & Languages
     git build-essential wget rlwrap \
-    # Compilation headers
+    # Python & Compilation headers 
+    python3-dev python3-venv libssl-dev \
     libffi-dev liblcms2-dev libldap2-dev libmariadb-dev libsasl2-dev \
     libtiff5-dev libwebp-dev pkg-config tk8.6-dev libbz2-dev \
     # Redis for tests
@@ -68,7 +69,8 @@ RUN mkdir -p ${NVM_DIR} && \
 
 USER root
 COPY resources/get_apps.py /usr/local/bin/get_apps
-RUN chmod +x /usr/local/bin/get_apps
+COPY resources/build_bench.sh /usr/local/bin/build_bench
+RUN chmod +x /usr/local/bin/get_apps /usr/local/bin/build_bench
 USER 1001
 
 # --- Stage 3: The Build Process ---
@@ -84,37 +86,8 @@ ARG GH_BUILD_KEY=""
 
 WORKDIR /home/frappe
 
-# Consolidate Build Process with Trace and Clean Directory
-RUN set -ex && \
-    git config --global user.email "frappe@example.com" && \
-    git config --global user.name "frappe" && \
-    git config --global --add safe.directory '*' && \
-    # 1. Ensure directory is clean and initialize
-    rm -rf /home/frappe/frappe-bench && \
-    bench init \
-      --frappe-branch=${FRAPPE_BRANCH} \
-      --frappe-path=${FRAPPE_PATH} \
-      --no-procfile \
-      --no-backups \
-      --skip-redis-config-generation \
-      --verbose \
-      /home/frappe/frappe-bench && \
-    cd /home/frappe/frappe-bench && \
-    # 2. Fetch Apps
-    export GITHUB_TOKEN=${GH_BUILD_KEY} && \
-    APPS_LIST=$(get_apps --org "${GITHUB_ORG}" --apps "${APPS} ${ERPNEXT_REPO}") && \
-    echo "Identified unique apps: ${APPS_LIST}" && \
-    for app in ${APPS_LIST}; do \
-        echo "Processing get-app for: ${app}" && \
-        bench get-app --resolve-deps "${app}"; \
-    done && \
-    # 3. Assets
-    echo "{}" > sites/common_site_config.json && \
-    bench build && \
-    # 4. Clean
-    rm -rf apps/*/.git && \
-    find . -name "__pycache__" -type d -exec rm -rf {} + && \
-    find . -name "*.pyc" -delete
+# One-Shot Build Process (Clean, Init, Fetch, Build, Clean)
+RUN build_bench
 
 WORKDIR /home/frappe/frappe-bench
 
