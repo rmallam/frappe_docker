@@ -1,117 +1,88 @@
 ARG PYTHON_VERSION=3.11.6
 ARG DEBIAN_BASE=bookworm
 ARG TARGETARCH
+
+# --- Stage 1: Runtime Base (Minimal) ---
 FROM python:${PYTHON_VERSION}-slim-${DEBIAN_BASE} AS base
 
 ARG WKHTMLTOPDF_VERSION=0.12.6.1-3
 ARG WKHTMLTOPDF_DISTRO=bookworm
+
+# OCP FIX: Use group 0 and numeric UID 1001
+RUN useradd -u 1001 -ms /bin/bash -g 0 frappe && \
+    apt-get update && \
+    apt-get install --no-install-recommends -y \
+    # Runtime Shared Libraries
+    nginx gettext-base file \
+    libpango-1.0-0 libharfbuzz0b libpangoft2-1.0-0 libpangocairo-1.0-0 \
+    restic gpg mariadb-client less libpq-dev postgresql-client \
+    wait-for-it jq media-types curl ca-certificates && \
+    # Download and install wkhtmltopdf (Runtime needed for PDF generation)
+    if [ "${TARGETARCH}" = "arm64" ]; then export ARCH=arm64; \
+    elif [ "${TARGETARCH}" = "amd64" ]; then export ARCH=amd64; \
+    else export ARCH=$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/'); fi && \
+    downloaded_file=wkhtmltox_${WKHTMLTOPDF_VERSION}.${WKHTMLTOPDF_DISTRO}_${ARCH}.deb && \
+    curl -sLO https://github.com/wkhtmltopdf/packaging/releases/download/$WKHTMLTOPDF_VERSION/$downloaded_file && \
+    apt-get install -m -y ./$downloaded_file && \
+    # Clean up immediately
+    rm $downloaded_file && \
+    rm -rf /var/lib/apt/lists/* && \
+    # System path for bench
+    pip3 install --no-cache-dir frappe-bench && \
+    # Nginx config for non-root
+    rm -fr /etc/nginx/sites-enabled/default && \
+    sed -i '/user www-data/d' /etc/nginx/nginx.conf && \
+    sed -i 's/listen 80 default_server/listen 8080 default_server/' /etc/nginx/sites-available/default || true && \
+    ln -sf /dev/stdout /var/log/nginx/access.log && ln -sf /dev/stderr /var/log/nginx/error.log && \
+    touch /run/nginx.pid && \
+    chown -R 1001:0 /etc/nginx /var/log/nginx /var/lib/nginx /run && \
+    chmod -R g=u /etc/nginx /var/log/nginx /var/lib/nginx /run
+
+# --- Stage 2: Heavyweight Builder (Build tools) ---
+FROM base AS builder-base
+
 ARG NODE_VERSION=20.19.2
 ENV NVM_DIR=/home/frappe/.nvm
 ENV PATH=${NVM_DIR}/versions/node/v${NODE_VERSION}/bin/:${PATH}
 
-# OCP FIX: Use group 0 and numeric UID 1001
-RUN useradd -u 1001 -ms /bin/bash -g 0 frappe \
-    && apt-get update \
-    && apt-get install --no-install-recommends -y \
-    curl \
-    git \
-    vim \
-    nginx \
-    gettext-base \
-    file \
-    # weasyprint dependencies
-    libpango-1.0-0 \
-    libharfbuzz0b \
-    libpangoft2-1.0-0 \
-    libpangocairo-1.0-0 \
-    # For backups
-    restic \
-    gpg \
-    # MariaDB
-    mariadb-client \
-    less \
-    # Postgres
-    libpq-dev \
-    postgresql-client \
-    # For healthcheck
-    wait-for-it \
-    jq \
-    # For MIME type detection
-    media-types
-
-# Switch to non-root user (numeric 1001)
-USER 1001
-RUN mkdir -p ${NVM_DIR} \
-    && curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.5/install.sh | bash \
-    && . ${NVM_DIR}/nvm.sh \
-    && nvm install ${NODE_VERSION} \
-    && nvm use v${NODE_VERSION} \
-    && npm install -g yarn \
-    && nvm alias default v${NODE_VERSION} \
-    && rm -rf ${NVM_DIR}/.cache
-
-# Switch back to root for system-level installations
 USER root
-RUN if [ "${TARGETARCH}" = "arm64" ]; then export ARCH=arm64; \
-    elif [ "${TARGETARCH}" = "amd64" ]; then export ARCH=amd64; \
-    else export ARCH=$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/'); fi \
-    && downloaded_file=wkhtmltox_${WKHTMLTOPDF_VERSION}.${WKHTMLTOPDF_DISTRO}_${ARCH}.deb \
-    && curl -sLO https://github.com/wkhtmltopdf/packaging/releases/download/$WKHTMLTOPDF_VERSION/$downloaded_file \
-    && apt-get install -m -y ./$downloaded_file \
-    && rm $downloaded_file \
-    # Clean up
-    && rm -rf /var/lib/apt/lists/* \
-    && rm -fr /etc/nginx/sites-enabled/default \
-    && pip3 install --no-cache-dir frappe-bench \
-    # Fixes for non-root nginx and logs to stdout
-    && sed -i '/user www-data/d' /etc/nginx/nginx.conf \
-    # Listen on non-privileged port
-    && sed -i 's/listen 80 default_server/listen 8080 default_server/' /etc/nginx/sites-available/default || true \
-    && ln -sf /dev/stdout /var/log/nginx/access.log && ln -sf /dev/stderr /var/log/nginx/error.log \
-    && touch /run/nginx.pid \
-    && touch /run/nginx.pid \
-    && chown -R 1001:0 /etc/nginx /var/log/nginx /var/lib/nginx /run \
-    && chmod -R g=u /etc/nginx /var/log/nginx /var/lib/nginx /run /home/frappe/.nvm
-
-COPY resources/nginx-template.conf /templates/nginx/frappe.conf.template
-COPY resources/nginx-entrypoint.sh /usr/local/bin/nginx-entrypoint.sh
-RUN chmod +x /usr/local/bin/nginx-entrypoint.sh
-
-FROM base AS build
-
-RUN apt-get update \
-    && DEBIAN_FRONTEND=noninteractive apt-get install --no-install-recommends -y \
-    # For frappe framework
-    wget \
-    # For psycopg2
-    libpq-dev \
-    # Other
-    libffi-dev \
-    liblcms2-dev \
-    libldap2-dev \
-    libmariadb-dev \
-    libsasl2-dev \
-    libtiff5-dev \
-    libwebp-dev \
-    pkg-config \
-    redis-tools \
-    rlwrap \
-    tk8.6-dev \
-    cron \
-    # For pandas
-    gcc \
-    build-essential \
-    libbz2-dev \
-    && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && \
+    DEBIAN_FRONTEND=noninteractive apt-get install --no-install-recommends -y \
+    # Build Tools & Languages
+    git build-essential wget rlwrap \
+    # Compilation headers
+    libffi-dev liblcms2-dev libldap2-dev libmariadb-dev libsasl2-dev \
+    libtiff5-dev libwebp-dev pkg-config tk8.6-dev libbz2-dev \
+    # Redis for tests
+    redis-tools && \
+    rm -rf /var/lib/apt/lists/*
 
 USER 1001
+RUN mkdir -p ${NVM_DIR} && \
+    curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.5/install.sh | bash && \
+    . ${NVM_DIR}/nvm.sh && \
+    nvm install ${NODE_VERSION} && \
+    nvm use v${NODE_VERSION} && \
+    npm install -g yarn && \
+    rm -rf ${NVM_DIR}/.cache
 
-FROM build AS builder
+USER root
+COPY resources/get_apps.py /usr/local/bin/get_apps
+RUN chmod +x /usr/local/bin/get_apps
+USER 1001
+
+# --- Stage 3: The Build Process ---
+FROM builder-base AS builder
 
 ARG FRAPPE_BRANCH=version-15
 ARG FRAPPE_PATH=https://github.com/frappe/frappe
 ARG ERPNEXT_REPO=https://github.com/frappe/erpnext
 ARG ERPNEXT_BRANCH=version-15
+ARG APPS=""
+ARG GITHUB_ORG=""
+ARG GITHUB_TOKEN=""
+
+WORKDIR /home/frappe/frappe-bench
 
 RUN git config --global user.email "frappe@example.com" && \
     git config --global user.name "frappe" && \
@@ -126,44 +97,42 @@ RUN bench init \
   --verbose \
   /home/frappe/frappe-bench
 
-WORKDIR /home/frappe/frappe-bench
+# Dynamically fetch ERPNext and any other requested apps
+RUN export GITHUB_TOKEN=${GITHUB_TOKEN} && \
+    APPS_LIST=$(get_apps --org "${GITHUB_ORG}" --apps "${APPS} ${ERPNEXT_REPO}") && \
+    for app in ${APPS_LIST}; do \
+        bench get-app --resolve-deps "${app}"; \
+    done && \
+    echo "{}" > sites/common_site_config.json && \
+    bench build && \
+    # Cleanup bulky metadata to keep final copy light
+    rm -rf apps/*/.git && \
+    find . -name "__pycache__" -type d -exec rm -rf {} + && \
+    find . -name "*.pyc" -delete
 
-RUN bench get-app --branch=${ERPNEXT_BRANCH} --resolve-deps erpnext ${ERPNEXT_REPO}
-
-RUN echo "{}" > sites/common_site_config.json
-
-RUN bench build
-
+# --- Stage 4: Final Production Image ---
 FROM base AS erpnext
 
 USER 1001
-
-RUN echo "echo \"Commands restricted in production container, Read FAQ before you proceed: https://frappe.io/ctr-faq\"" >> ~/.bashrc
-
-COPY --from=builder --chown=1001:0 /home/frappe/frappe-bench /home/frappe/frappe-bench
-
 WORKDIR /home/frappe/frappe-bench
 
-# Switch to root to fix permissions for OpenShift
-USER root
+# Copy the pre-built bench from builder
+COPY --from=builder --chown=1001:0 /home/frappe/frappe-bench /home/frappe/frappe-bench
 
-# Pre-create sites and logs directories if they don't exist and ensure they are group-writable
-# This helps with volume permission inheritance on some clusters
-RUN mkdir -p sites logs && \
-    mv sites/assets /home/frappe/assets_cache && \
-    mkdir -p sites/assets && \
-    chmod -R g=u /home/frappe/frappe-bench && \
-    chmod -R g=u /home/frappe/assets_cache && \
+# Resources and Entrypoint
+USER root
+RUN mv sites/assets /home/frappe/assets_cache && \
+    mkdir -p sites/assets logs && \
+    chmod -R g=u /home/frappe/frappe-bench /home/frappe/assets_cache && \
     chmod g=u /etc/passwd
 
+COPY resources/nginx-template.conf /templates/nginx/frappe.conf.template
+COPY resources/nginx-entrypoint.sh /usr/local/bin/nginx-entrypoint.sh
 COPY resources/entrypoint.sh /usr/local/bin/entrypoint.sh
-RUN chmod +x /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/nginx-entrypoint.sh /usr/local/bin/entrypoint.sh
 
-# Use entrypoint to handle UID mapping
-ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
-
-# Switch back to non-root user
 USER 1001
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 
 VOLUME [ \
   "/home/frappe/frappe-bench/sites", \

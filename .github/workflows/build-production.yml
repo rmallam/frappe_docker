@@ -61,3 +61,7 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
           pull: true
+          build-args: |
+            GITHUB_ORG=
+            GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}
+            APPS=https://github.com/rmallam/frappe-hello-world.git https://github.com/frappe/erpnext.git
