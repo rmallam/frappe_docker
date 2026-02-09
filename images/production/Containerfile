@@ -33,8 +33,8 @@ RUN useradd -u 1001 -ms /bin/bash -g 0 frappe && \
     rm $downloaded_file && \
     rm -rf /var/lib/apt/lists/* && \
     # System path for bench and fallback venv tools
-    # Pinning frappe-bench to 5.22.6 to avoid forced UV logic in newer versions
-    pip3 install --no-cache-dir frappe-bench==5.22.6 virtualenv && \
+    # Pinning frappe-bench to 5.22.6 and click to 8.0.4 to ensure compatibility
+    pip3 install --no-cache-dir frappe-bench==5.22.6 click==8.0.4 virtualenv && \
     # Purge uv if it was pulled as a dependency
     pip3 uninstall -y uv && \
     rm -rf /usr/local/bin/uv /usr/bin/uv && \
