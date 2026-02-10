@@ -5,7 +5,7 @@ ARG TARGETARCH
 # --- Stage 1: Runtime Base (Minimal) ---
 FROM python:${PYTHON_VERSION}-slim-${DEBIAN_BASE} AS base
 
-# Disable 'uv' for Docker builds globally. It often crashes with 
+# Disable 'uv' for Docker builds globally. It often crashes with
 # Illegal Instruction (exit 167) during emulated ARM64 builds in QEMU.
 ENV BENCH_USE_UV=0
 ENV INSTALL_USE_UV=0
@@ -59,7 +59,7 @@ RUN apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get install --no-install-recommends -y \
     # Build Tools & Languages
     git build-essential wget rlwrap \
-    # Python & Compilation headers 
+    # Python & Compilation headers
     python3-dev python3-venv libssl-dev \
     libffi-dev liblcms2-dev libldap2-dev libmariadb-dev libsasl2-dev \
     libtiff5-dev libwebp-dev pkg-config tk8.6-dev libbz2-dev \

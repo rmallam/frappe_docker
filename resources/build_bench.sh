@@ -4,7 +4,7 @@ set -ex
 # This script initializes the Frappe Bench and installs apps.
 # It is designed to run inside the Docker builder container.
 
-# CRITICAL: Disable 'uv' for Docker builds. 'uv' often crashes with 
+# CRITICAL: Disable 'uv' for Docker builds. 'uv' often crashes with
 # Illegal Instruction (exit 167) during emulated ARM64 builds in QEMU.
 export BENCH_USE_UV=0
 export INSTALL_USE_UV=0
@@ -64,7 +64,7 @@ if [ -n "$APPS_LIST" ]; then
             echo "Installing app $app_name"
             bench get-app --resolve-deps --branch "${FRAPPE_BRANCH:-version-15}" "$app_name"
         fi
-        
+
         # LOGGING: Verify checkout branch
         if [ -d "apps/$app_name" ]; then
             echo "Branch verification for $app_name:"
