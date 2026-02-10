@@ -4,18 +4,22 @@ import json
 import os
 import sys
 import urllib.request
-from typing import List, Set
+from typing import List, Dict
 
-def normalize_url(url: str) -> str:
-    """Normalizes a git URL for comparison by stripping whitespace, trailing slashes, and .git extensions."""
+def extract_name(url: str) -> str:
+    """Extracts the app name from a Git URL or just returns the name."""
     if not url:
         return ""
-    url = url.strip().lower()
-    if url.endswith("/"):
-        url = url[:-1]
-    if url.endswith(".git"):
-        url = url[:-4]
-    return url
+    # Normalize first
+    name = url.strip().lower()
+    if name.endswith(".git"):
+        name = name[:-4]
+    if name.endswith("/"):
+        name = name[:-1]
+    # If it's a URL, get the last component
+    if "/" in name:
+        name = name.split("/")[-1]
+    return name
 
 def get_repos_from_org(org: str) -> List[str]:
     """Fetches all repository clone URLs from a GitHub organization with basic error handling."""
@@ -57,24 +61,21 @@ def main():
     
     args = parser.parse_args()
     
-    seen_normalized: Set[str] = set()
-    output_apps: List[str] = []
+    unique_apps: Dict[str, str] = {}
     
     def process_app(app_input: str):
         if not app_input:
             return
-        # If it looks like a URL, normalize and add
-        if "github.com" in app_input or "gitlab.com" in app_input or app_input.startswith(("http", "git@")):
-            norm = normalize_url(app_input)
-            if norm and norm not in seen_normalized:
-                seen_normalized.add(norm)
-                output_apps.append(app_input)
-        else:
-            # It's an app name (e.g. 'erpnext'). Add it if not seen.
-            norm = app_input.strip().lower()
-            if norm and norm not in seen_normalized:
-                seen_normalized.add(norm)
-                output_apps.append(app_input)
+        name = extract_name(app_input)
+        if not name:
+            return
+            
+        # Determine if it's a URL
+        is_url = "/" in app_input or "github.com" in app_input or app_input.startswith(("http", "git@"))
+        
+        # Favor URLs over simple names if we encounter both
+        if name not in unique_apps or is_url:
+            unique_apps[name] = app_input
 
     # 1. Process Organization first (if provided)
     if args.org:
@@ -86,9 +87,15 @@ def main():
         for app in args.apps.split():
             process_app(app)
     
-    # Final output: space-separated list of unique strings
-    if output_apps:
-        print(" ".join(output_apps))
+    # Final output: space-separated list of unique strings (name#url or name)
+    if unique_apps:
+        output_items = []
+        for name, original in unique_apps.items():
+            if "/" in original or "github.com" in original or original.startswith(("http", "git@")):
+                output_items.append(f"{name}#{original}")
+            else:
+                output_items.append(name)
+        print(" ".join(output_items))
 
 if __name__ == "__main__":
     main()

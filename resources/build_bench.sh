@@ -52,15 +52,22 @@ APPS_LIST=$(get_apps --org "${GITHUB_ORG}" --apps "${APPS} ${ERPNEXT_REPO}")
 
 if [ -n "$APPS_LIST" ]; then
     echo "Identified unique apps to install: $APPS_LIST"
-    for app in $APPS_LIST; do
-        echo "Installing app: $app"
-        # Force the branch to match FRAPPE_BRANCH to ensure compatibility
-        bench get-app --resolve-deps --branch "${FRAPPE_BRANCH:-version-15}" "$app"
+    for app_item in $APPS_LIST; do
+        if [[ "$app_item" == *"#"* ]]; then
+            app_name="${app_item%%#*}"
+            app_url="${app_item##*#}"
+            echo "Installing app $app_name from $app_url"
+            # Use safer [name] [url] format
+            bench get-app --resolve-deps --branch "${FRAPPE_BRANCH:-version-15}" "$app_name" "$app_url"
+        else
+            app_name="$app_item"
+            echo "Installing app $app_name"
+            bench get-app --resolve-deps --branch "${FRAPPE_BRANCH:-version-15}" "$app_name"
+        fi
         
-        # LOGGING: Verify checkout
-        app_name=$(basename "$app" .git)
+        # LOGGING: Verify checkout branch
         if [ -d "apps/$app_name" ]; then
-            echo "Branch for $app_name:"
+            echo "Branch verification for $app_name:"
             git -C "apps/$app_name" branch
         fi
     done
