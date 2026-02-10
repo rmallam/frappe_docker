@@ -22,6 +22,9 @@ RUN useradd -u 1001 -ms /bin/bash -g 0 frappe && \
     libpango-1.0-0 libharfbuzz0b libpangoft2-1.0-0 libpangocairo-1.0-0 \
     restic gpg mariadb-client less libpq-dev postgresql-client \
     wait-for-it jq media-types curl ca-certificates && \
+    # Install Node.js 20 (Needed for Socket.IO runtime)
+    curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
+    apt-get install -y nodejs && \
     # Download and install wkhtmltopdf (Runtime needed for PDF generation)
     if [ "${TARGETARCH}" = "arm64" ]; then export ARCH=arm64; \
     elif [ "${TARGETARCH}" = "amd64" ]; then export ARCH=amd64; \
