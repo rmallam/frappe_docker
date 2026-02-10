@@ -55,8 +55,14 @@ if [ -n "$APPS_LIST" ]; then
     for app in $APPS_LIST; do
         echo "Installing app: $app"
         # Force the branch to match FRAPPE_BRANCH to ensure compatibility
-        # unless a branch is already specified (though URLs here usually don't have them)
         bench get-app --resolve-deps --branch "${FRAPPE_BRANCH:-version-15}" "$app"
+        
+        # LOGGING: Verify checkout
+        app_name=$(basename "$app" .git)
+        if [ -d "apps/$app_name" ]; then
+            echo "Branch for $app_name:"
+            git -C "apps/$app_name" branch
+        fi
     done
 else
     echo "No custom apps to install."
