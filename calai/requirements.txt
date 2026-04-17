@@ -1,0 +1,90 @@
+ATX Advantage Pass: Deploy Cal.diy on Kubernetes and integrate with existing Frappe cluster
+
+
+Description
+
+User Story
+As a Platform Engineer,
+I want to deploy Cal.diy on Kubernetes and integrate it with the existing Frappe cluster,
+so that ATX Advantage Pass scheduling is production-ready, secure, scalable, and operationally observable.
+
+Context
+Existing Frappe cluster is already provisioned and running.
+
+This story covers Cal.diy platform setup on K8s and cluster-to-cluster/service integration with Frappe APIs/webhooks.
+
+Target environment must preserve AU data residency and current security controls.
+
+Scope
+Kubernetes deployment architecture for Cal.diy (app, worker, ingress, config, secrets)
+
+Managed Postgres connectivity for Cal.diy
+
+Ingress/TLS/domain setup for cal.atx.com
+
+Network and security integration between Cal.diy services and Frappe endpoints
+
+Webhook routing from Cal.diy to webhook microservice/Frappe integration layer
+
+Observability, runbooks, and production readiness checks
+
+Out of Scope
+Rebuilding scheduler UX in Frappe
+
+Rewriting existing Frappe cluster foundations
+
+Non-Kubernetes deployment models
+
+Acceptance Criteria
+Cal.diy is deployed in Kubernetes using reproducible manifests/Helm values and supports rolling upgrades.
+
+Cal.diy is reachable via https://cal.atx.com with valid TLS certificates and ingress routing.
+
+Secrets/config are stored securely (K8s secrets/external secret manager) with no plaintext credentials in repo.
+
+Cal.diy successfully connects to managed Postgres in AU region with backup/restore policy documented.
+
+Network policy/firewall rules allow only required traffic between Cal.diy and Frappe integration endpoints.
+
+Webhook events from Cal.diy (BOOKING_CREATED, BOOKING_CANCELLED, BOOKING_RESCHEDULED) reach integration endpoint successfully in staging.
+
+HMAC webhook signing secret is configured and validated end-to-end with failure-path tests.
+
+Platform observability is enabled (logs, metrics, health checks, alerts) for Cal.diy workloads.
+
+Autoscaling/resource requests-limits are configured and validated under expected load profile.
+
+AU data residency and security requirements are validated and signed off.
+
+Operational runbook exists for deploy, rollback, incident triage, secret rotation, and certificate renewal.
+
+Integration smoke test passes: booking created in Cal.diy results in successful downstream processing in Frappe integration layer.
+
+Technical Tasks (Suggested)
+Create namespace, service accounts, RBAC, network policies
+
+Deploy Cal.diy app and worker workloads
+
+Configure ingress controller route, DNS, TLS cert manager
+
+Configure Postgres connection, pooling, migration strategy
+
+Configure webhook target and secret rotation procedure
+
+Configure monitoring dashboards and alert rules
+
+Execute staging validation checklist and publish evidence
+
+Definition of Done
+All acceptance criteria met in staging
+
+Production deployment plan approved
+
+Handover artifacts complete (runbook, diagrams, config references, rollback plan)
+
+Dependencies
+Existing Frappe cluster endpoints and auth contracts available
+
+DNS and certificate provisioning access
+
+Managed Postgres credentials and network access approvals
