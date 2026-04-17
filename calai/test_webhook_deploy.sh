@@ -5,7 +5,8 @@
 # Configuration
 SECRET="change-me-in-production"
 WEBHOOK_URL="http://localhost:8000/api/method/calai.webhooks.receive"
-# WEBHOOK_URL="http://frappe-service.frappe.svc.cluster.local:8000/api/method/calai.webhooks.receive" # If running inside pod
+# WEBHOOK_URL="http://frappe-service.frappe.svc.cluster.local:8000/api/method/calai.webhooks.receive" # If routing internally
+# WEBHOOK_URL="https://central.atxinvox.com.au/api/method/calai.webhooks.receive" # If routing via public ingress
 
 # JSON Payload
 PAYLOAD=$(cat <<EOF
